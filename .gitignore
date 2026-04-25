@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Telegram sessions
+*.session
+*.session-journal
+
+# IDEs
+.vscode/
+.idea/
+
+# Docker
+.dockerignore
