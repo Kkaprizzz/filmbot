@@ -1,14 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
-from typing import List, Union
+from typing import List, Union, Any
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
     API_ID: int
     API_HASH: str
     
-    # Поддержка списка ID админов
-    ADMIN_IDS: List[int]
+    # Принимаем как Any, чтобы pydantic-settings не пытался принудительно парсить это как JSON-список
+    ADMIN_IDS: Any
     
     # Database
     DB_USER: str
@@ -19,14 +19,19 @@ class Settings(BaseSettings):
 
     @field_validator("ADMIN_IDS", mode="before")
     @classmethod
-    def parse_admin_ids(cls, v: Union[str, int, List[int]]) -> List[int]:
+    def parse_admin_ids(cls, v: Any) -> List[int]:
         if isinstance(v, int):
             return [v]
         if isinstance(v, str):
-            # Убираем лишние символы и делим по запятой
+            # Если это строка (из .env), чистим и делим по запятой
             v = v.replace("[", "").replace("]", "").replace(" ", "")
-            return [int(i) for i in v.split(",") if i]
-        return v
+            try:
+                return [int(i) for i in v.split(",") if i]
+            except ValueError:
+                return []
+        if isinstance(v, list):
+            return [int(i) for i in v]
+        return []
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
