@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # Позволяет запускать вручную из вкладки Actions
 
 jobs:
   deploy:

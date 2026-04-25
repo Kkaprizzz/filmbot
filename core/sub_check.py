@@ -6,7 +6,12 @@ from typing import Union
 import core.database as database
 from core.config import settings
 
-userbot = TelegramClient('session_name', settings.API_ID, settings.API_HASH)
+import os
+
+# Создаем папку для сессий, если её нет
+os.makedirs('sessions', exist_ok=True)
+
+userbot = TelegramClient('sessions/bot_userbot', settings.API_ID, settings.API_HASH)
 
 error_msgs = ['chat not found', 'user not participant', 'bot was kicked']
 
