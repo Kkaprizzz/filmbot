@@ -11,6 +11,8 @@ class SearchStates(StatesGroup):
     Searching = State()
     NotSearching = State()
 
+MENU_BUTTONS = ["🔎 Поиск по коду", "🎬 Твоя Кинотека", "📊 Админ панель", "🏠 На главную"]
+
 async def clear_state(state: FSMContext):
     await state.set_state(SearchStates.NotSearching)
 
@@ -53,13 +55,19 @@ async def search_film_handler(message: Message, state: FSMContext):
 @router.message(SearchStates.Searching)
 async def search_handler(message: Message, state: FSMContext):
     code_text = message.text.strip()
-    user_id = message.from_user.id
+    
+    # Если нажата кнопка меню - сбрасываем поиск и выходим
+    if any(btn in code_text for btn in MENU_BUTTONS):
+        await state.clear()
+        # Повторно триггерим обработку сообщения, чтобы сработал хендлер кнопки
+        return
 
     if not code_text.isdigit():
         await message.answer("Код должен быть только из цифр! 🔢")
         return
     
     code = int(code_text)
+    user_id = message.from_user.id
     result = await database.get_movie_by_code(code)
 
     if result:
