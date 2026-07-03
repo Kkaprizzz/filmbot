@@ -1,30 +1,30 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: kinobot_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   bot:
     build: .
     container_name: kinobot_bot
     restart: always
     env_file:
       - .env
-    volumes:
-      - .:/app
-      - .session-data:/app/session_name.session
-    command: python bot/main.py
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python startup_bot.py
 
-# Optional: Local Postgres database
-#  db:
-#    image: postgres:15
-#    container_name: kinobot_db
-#    restart: always
-#    environment:
-#      POSTGRES_USER: myuser
-#      POSTGRES_PASSWORD: mypassword
-#      POSTGRES_DB: mydb
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:

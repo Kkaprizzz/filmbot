@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from bot.handlers.search import clear_state
-import core.database as database
+from db.crud import database
 
 router = Router()
 
@@ -17,9 +17,9 @@ async def liked_cmd(message: Message, state: FSMContext):
         result = await database.get_movie_by_code(code)
 
         if result:
-            title = result['title']
-            description = result['description']
-            image_url = result['image_url']
+            title = result.title
+            description = result.description
+            image_url = result.image_url
 
             text = f"<b>{title}</b>\n\n{description}"
             
@@ -61,9 +61,9 @@ async def scroll_favorites(callback: CallbackQuery):
         await callback.answer("Фильм не найден.")
         return
 
-    title = result['title']
-    description = result['description']
-    image_url = result['image_url']
+    title = result.title
+    description = result.description
+    image_url = result.image_url
     text = f"<b>{title}</b>\n\n{description}"
 
     nav_buttons = []

@@ -4,9 +4,10 @@ from typing import List, Union, Any
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
-    API_ID: int
-    API_HASH: str
-    
+
+    # Subgram — сервис обязательной подписки
+    SUBGRAM_API_KEY: str
+
     # Принимаем как Any, чтобы pydantic-settings не пытался принудительно парсить это как JSON-список
     ADMIN_IDS: Any
     
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_HOST: str
     DB_PORT: int = 5432
+
+    DB_URL: str
 
     @field_validator("ADMIN_IDS", mode="before")
     @classmethod
