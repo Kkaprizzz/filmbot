@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
@@ -64,13 +66,20 @@ class Database:
             return result.scalar()
         
     async def get_free_code(self) -> int:
+        """Возвращает случайный свободный код фильма в формате ХХХХ (1000-9999)."""
         async with async_session() as session:
-            result = await session.execute(select(func.max(Films.code)))
-            for code in range(1, (result.scalar() or 0) + 2):
+            for _ in range(100):
+                code = random.randint(1000, 9999)
                 existing = await session.execute(select(Films).where(Films.code == code))
                 if not existing.scalar_one_or_none():
                     return code
-            return None
+
+            # Крайне маловероятный случай: почти весь диапазон занят.
+            # Ищем любой свободный код перебором.
+            result = await session.execute(select(Films.code))
+            used = {row[0] for row in result.all()}
+            free = [c for c in range(1000, 10000) if c not in used]
+            return random.choice(free) if free else None
         
     # === LikedFilms ===
     async def add_liked_movie(self, user_id: int, film_code: int):
