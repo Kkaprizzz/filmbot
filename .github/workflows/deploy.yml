@@ -1,9 +1,10 @@
-name: Deploy to Server
+name: Deploy KinoBot
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch: # Позволяет запускать вручную из вкладки Actions
 
 jobs:
   deploy:
@@ -17,9 +18,28 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cd /path/to/KinoBot
-            git pull origin main
-            docker-compose up -d --build
-            docker system prune -f
+            # Определяем рабочую директорию (автоматически подставит /root или /home/user)
+            WORKDIR=$HOME/filmbot
+            mkdir -p $WORKDIR
+            cd $WORKDIR
+            
+            git config --global --add safe.directory $WORKDIR
+            
+            if [ -d ".git" ]; then
+              echo "Repository exists, pulling latest changes..."
+              git pull origin main
+            else
+              echo "Cloning repository..."
+              git clone https://github.com/Kkaprizzz/filmbot.git .
+            fi
+            
+            # Пробуем запустить через новый 'docker compose' или старый 'docker-compose'
+            if docker compose version > /dev/null 2>&1; then
+              docker compose down
+              docker compose up -d --build
+            else
+              docker-compose down
+              docker-compose up -d --build
+            fi

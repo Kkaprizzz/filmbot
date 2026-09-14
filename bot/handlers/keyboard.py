@@ -3,8 +3,8 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, FSInputF
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from bot.handlers.search import clear_state
-import core.database as database
 from core.config import settings
+from db.crud import database
 
 router = Router()
 

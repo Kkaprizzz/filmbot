@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from bot.handlers.search import clear_state
-import core.database as database
+from db.crud import database
 from core.config import settings
 
 router = Router()
@@ -21,11 +21,6 @@ class AdminStates(StatesGroup):
     add_photo = State()
     confirm_save = State()
     manage_find = State()
-    # Спонсоры
-    manage_sponsors = State()
-    sponsor_add_name = State()
-    sponsor_add_pub = State()
-    sponsor_add_priv = State()
     # Рассылка
     broadcast_msg = State()
     broadcast_btn_text = State()
@@ -39,15 +34,13 @@ async def get_admin_main_text():
     return (f"🛠 <b>Панель администратора</b>\n\n"
             f"📊 <b>Статистика:</b>\n"
             f"👤 Пользователей: <code>{stats['users_count']}</code>\n"
-            f"🎬 Фильмов в базе: <code>{stats['films_count']}</code>\n"
-            f"📢 Спонсоров: <code>{stats['sponsors_count']}</code>\n\n"
+            f"🎬 Фильмов в базе: <code>{stats['films_count']}</code>\n\n"
             f"Выберите действие ниже:")
 
 def get_admin_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить фильм", callback_data="admin_add")],
         [InlineKeyboardButton(text="⚙️ Управление фильмами", callback_data="admin_manage")],
-        [InlineKeyboardButton(text="📢 Управление спонсорами", callback_data="admin_sponsors")],
         [InlineKeyboardButton(text="🚀 Рассылка", callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="🔄 Обновить статистику", callback_data="admin_refresh")]
     ])
@@ -175,17 +168,17 @@ async def broadcast_start(callback: CallbackQuery, state: FSMContext, bot: Bot):
     for user in users:
         try:
             if photo:
-                await bot.send_photo(user['user_id'], photo, caption=text, parse_mode="HTML", reply_markup=markup)
+                await bot.send_photo(user.user_id, photo, caption=text, parse_mode="HTML", reply_markup=markup)
             else:
-                await bot.send_message(user['user_id'], text, parse_mode="HTML", reply_markup=markup)
+                await bot.send_message(user.user_id, text, parse_mode="HTML", reply_markup=markup)
             count += 1
         except TelegramForbiddenError:
             blocked += 1
         except TelegramRetryAfter as e:
             await asyncio.sleep(e.retry_after)
             try:
-                if photo: await bot.send_photo(user['user_id'], photo, caption=text, parse_mode="HTML", reply_markup=markup)
-                else: await bot.send_message(user['user_id'], text, parse_mode="HTML", reply_markup=markup)
+                if photo: await bot.send_photo(user.user_id, photo, caption=text, parse_mode="HTML", reply_markup=markup)
+                else: await bot.send_message(user.user_id, text, parse_mode="HTML", reply_markup=markup)
                 count += 1
             except: errors += 1
         except Exception:
@@ -200,62 +193,6 @@ async def broadcast_start(callback: CallbackQuery, state: FSMContext, bot: Bot):
     
     text = await get_admin_main_text()
     await callback.message.answer(text, reply_markup=get_admin_kb(), parse_mode="HTML")
-
-# --- УПРАВЛЕНИЕ СПОНСОРАМИ ---
-
-@router.callback_query(F.data == "admin_sponsors", IsAdmin())
-async def manage_sponsors(callback: CallbackQuery):
-    sponsors = await database.get_sponsors(only_required=False)
-    text = "📢 <b>Список спонсоров:</b>\n\n"
-    
-    kb_list = []
-    if not sponsors:
-        text += "<i>Список пуст.</i>"
-    else:
-        for spon in sponsors:
-            text += f"🔹 {spon['channelname']} (ID: {spon['id']})\n"
-            kb_list.append([InlineKeyboardButton(text=f"🗑 Удалить {spon['channelname']}", callback_data=f"dspon_{spon['id']}")])
-    
-    kb_list.append([InlineKeyboardButton(text="➕ Добавить спонсора", callback_data="spon_add")])
-    kb_list.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_refresh")])
-    
-    await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_list), parse_mode="HTML")
-
-@router.callback_query(F.data.startswith("dspon_"), IsAdmin())
-async def delete_sponsor(callback: CallbackQuery):
-    spon_id = int(callback.data.split("_")[1])
-    await database.delete_sponsor(spon_id)
-    await callback.answer("Спонсор удален!")
-    await manage_sponsors(callback)
-
-@router.callback_query(F.data == "spon_add", IsAdmin())
-async def add_sponsor_init(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(AdminStates.sponsor_add_name)
-    await callback.message.edit_text("📝 Введите <b>Название</b> канала спонсора:", reply_markup=get_cancel_kb(), parse_mode="HTML")
-
-@router.message(AdminStates.sponsor_add_name, IsAdmin())
-async def sponsor_name(message: Message, state: FSMContext):
-    await state.update_data(s_name=message.text)
-    await state.set_state(AdminStates.sponsor_add_pub)
-    await message.answer("🔗 Теперь введите <b>Публичную ссылку</b> (например, https://t.me/channel):", reply_markup=get_cancel_kb())
-
-@router.message(AdminStates.sponsor_add_pub, IsAdmin())
-async def sponsor_pub(message: Message, state: FSMContext):
-    await state.update_data(s_pub=message.text)
-    await state.set_state(AdminStates.sponsor_add_priv)
-    await message.answer("🔐 Введите <b>Приватную ссылку</b> (если есть) или '-' если нет:", reply_markup=get_cancel_kb())
-
-@router.message(AdminStates.sponsor_add_priv, IsAdmin())
-async def sponsor_priv(message: Message, state: FSMContext):
-    data = await state.get_data()
-    priv_url = message.text if message.text != "-" else None
-    
-    await database.add_sponsor(data['s_name'], data['s_pub'], priv_url)
-    await state.clear()
-    await message.answer(f"✅ Спонсор {data['s_name']} успешно добавлен!")
-    
-    text = await get_admin_main_text()
-    await message.answer(text, reply_markup=get_admin_kb(), parse_mode="HTML")
 
 # --- ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ ФИЛЬМОВ ---
 
@@ -334,14 +271,14 @@ async def manage_find(message: Message, state: FSMContext):
         return await message.answer("❌ Фильм не найден в базе.")
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"edit_{movie['code']}")],
-        [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_{movie['code']}")],
+        [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"edit_{movie.code}")],
+        [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_{movie.code}")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_cancel")]
     ])
-    
+
     await message.answer_photo(
-        photo=movie['image_url'],
-        caption=f"📝 <b>Управление фильмом</b>\nКод: <code>{movie['code']}</code>\nНазвание: {movie['title']}",
+        photo=movie.image_url,
+        caption=f"📝 <b>Управление фильмом</b>\nКод: <code>{movie.code}</code>\nНазвание: {movie.title}",
         reply_markup=kb, parse_mode="HTML"
     )
 
