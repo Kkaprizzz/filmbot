@@ -5,9 +5,6 @@ from typing import List, Union, Any
 class Settings(BaseSettings):
     BOT_TOKEN: str
 
-    # Subgram — сервис обязательной подписки
-    SUBGRAM_API_KEY: str
-
     # Принимаем как Any, чтобы pydantic-settings не пытался принудительно парсить это как JSON-список
     ADMIN_IDS: Any
     

@@ -3,7 +3,6 @@ from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, C
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from db.crud import database
-import core.subgram as subgram
 
 router = Router()
 
@@ -17,51 +16,8 @@ async def clear_state(state: FSMContext):
     await state.set_state(SearchStates.NotSearching)
 
 
-def build_subscription_prompt(sponsors: list["subgram.Sponsor"]) -> InlineKeyboardMarkup:
-    buttons = []
-    for spon in sponsors:
-        buttons.append([InlineKeyboardButton(text=spon.text, url=spon.link)])
-    buttons.append([InlineKeyboardButton(text="✅ Я подписался на все каналы", callback_data="check_subscription")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-
-async def check_user_subscription(user) -> subgram.SubgramResult:
-    """Спрашивает у Subgram, нужна ли пользователю подписка."""
-    return await subgram.get_sponsors(
-        user_id=user.id,
-        chat_id=user.id,
-        first_name=user.first_name,
-        username=user.username,
-        language_code=user.language_code,
-        is_premium=user.is_premium,
-    )
-
-
-@router.callback_query(F.data == "check_subscription")
-async def check_subscription_callback(callback: CallbackQuery, state: FSMContext):
-    result = await check_user_subscription(callback.from_user)
-
-    if result.ok:
-        await callback.message.delete()
-        await state.set_state(SearchStates.Searching)
-        await callback.message.answer("✅ <b>Отлично!</b>\nТеперь введи код фильма в формате (1234) ниже ⬇️", parse_mode="HTML")
-    else:
-        await callback.answer("❌ Вы ещё не подписались на все каналы!", show_alert=True)
-
-
 @router.message(F.text.contains("🔎 Поиск по коду"))
 async def search_film_handler(message: Message, state: FSMContext):
-    result = await check_user_subscription(message.from_user)
-
-    if not result.ok:
-        keyboard = build_subscription_prompt(result.sponsors)
-        await message.reply_photo(
-            photo="https://ibb.co/BVZVtP91",
-            caption="📌 Перед началом работы необходимо подписаться на каналы наших спонсоров, затем нажмите «✅ Я подписался».",
-            reply_markup=keyboard
-        )
-        return
-
     await message.answer("Напиши код ниже в формате (ХХХХ)⬇️", parse_mode="HTML")
     await state.set_state(SearchStates.Searching)
 
