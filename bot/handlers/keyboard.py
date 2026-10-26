@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, FSInputFile, User
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from bot.handlers.search import clear_state
@@ -10,11 +10,14 @@ router = Router()
 
 @router.message(CommandStart())
 async def StartHandler(message: Message, state: FSMContext):
+    await show_home(message, state, message.from_user)
+
+async def show_home(message: Message, state: FSMContext, user: User):
     await clear_state(state)
     
-    user_id = message.from_user.id
-    user_name = message.from_user.username or "Unknown"
-    first_name = message.from_user.first_name or "Unknown"
+    user_id = user.id
+    user_name = user.username or "Unknown"
+    first_name = user.first_name or "Unknown"
     await database.add_user(user_id, user_name, first_name)
     
     buttons = []

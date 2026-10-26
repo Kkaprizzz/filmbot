@@ -1,9 +1,11 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import Field, SecretStr, field_validator
 from typing import List, Union, Any
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
+    BOTOHUB_TOKEN: SecretStr = SecretStr("")
+    BOTOHUB_CACHE_SECONDS: float = Field(default=30, ge=0, le=60)
 
     # Принимаем как Any, чтобы pydantic-settings не пытался принудительно парсить это как JSON-список
     ADMIN_IDS: Any
