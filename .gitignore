@@ -3,7 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 .env
+.pytest_cache/
+.ruff_cache/
 
 # Telegram sessions
 *.session
@@ -12,6 +15,3 @@ venv/
 # IDEs
 .vscode/
 .idea/
-
-# Docker
-.dockerignore

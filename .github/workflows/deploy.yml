@@ -1,25 +1,64 @@
-name: Deploy to Server
+name: Deploy KinoBot
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch: # Позволяет запускать вручную из вкладки Actions
+
+permissions:
+  contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: pytest -q
+
   deploy:
+    needs: test
+    concurrency:
+      group: filmbot-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cd /path/to/KinoBot
-            git pull origin main
-            docker-compose up -d --build
-            docker system prune -f
+            set -eu
+            # Определяем рабочую директорию (автоматически подставит /root или /home/user)
+            WORKDIR=$HOME/filmbot
+            mkdir -p $WORKDIR
+            cd $WORKDIR
+            
+            git config --global --add safe.directory $WORKDIR
+            
+            if [ -d ".git" ]; then
+              echo "Repository exists, pulling latest changes..."
+              git fetch origin main
+              git switch main
+              git merge --ff-only origin/main
+            else
+              echo "Cloning repository..."
+              git clone --branch main --single-branch https://github.com/Kkaprizzz/filmbot.git .
+            fi
+            
+            # Пробуем запустить через новый 'docker compose' или старый 'docker-compose'
+            if docker compose version > /dev/null 2>&1; then
+              docker compose up -d --build
+            else
+              docker-compose up -d --build
+            fi
