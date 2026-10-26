@@ -26,7 +26,7 @@ async def StartHandler(message: Message, state: FSMContext):
 
     kb = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True, one_time_keyboard=False)
 
-    await message.reply_photo(photo=FSInputFile("files/adminBanner.jpg"), caption="""🎬 <b>Тот самый бот из рекомендаций</b>\n\n📌 Увидел код вроде 4382 в TikTok или под видео?\n📥 Отправь его сюда — я за секунды найду фильм: название, постер и описание без спойлеров.\n\n💾 Понравился? Добавь в избранное одним нажатием и вернись к нему позже.\n\n<b>Просто. Удобно. По делу.</b> 🍿""",
+    await message.reply_photo(photo=FSInputFile("files/filmworksBanner.png"), caption="""🎬 <b>Тот самый бот из рекомендаций</b>\n\n📌 Увидел код вроде 4382 в TikTok или под видео?\n📥 Отправь его сюда — я за секунды найду фильм: название, постер и описание без спойлеров.\n\n💾 Понравился? Добавь в избранное одним нажатием и вернись к нему позже.\n\n<b>Просто. Удобно. По делу.</b> 🍿""",
                               reply_markup=kb, parse_mode="HTML")
     
 @router.message(F.text.contains("На главную🏠"))
